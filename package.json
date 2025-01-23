@@ -1,0 +1,33 @@
+{
+  "name": "swaggernodejs",
+  "version": "1.0.0",
+  "description": "Demo for swagger api documentation in nodejs by vasupatel",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "local": "nodemon index.js -e js,yaml",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "NodeJs",
+    "Swagger",
+    "MongodDB",
+    "ExpressJS"
+  ],
+  "author": "vasupatel",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.5",
+    "swagger": "^0.7.5",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

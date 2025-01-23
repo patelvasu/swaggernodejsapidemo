@@ -1,0 +1,694 @@
+openapi: 3.0.0
+info:
+  title: Swagger API Demo
+  description: |
+    ## Welcome to the Product API Documentation
+    This API provides endpoints for **product listing**, **product details**, and **user authentication**. It supports pagination, search, and token-based authentication using JWT.
+
+    ### Key Features:
+    - **Product Listing**: Retrieve a paginated list of products with optional search functionality.
+    - **Product Details**: Fetch detailed information about a specific product by its ID.
+    - **User Authentication**: Register, log in, and manage user profiles securely.
+
+    ### How to Use:
+    1. Start by registering a new user using the `/auth/register` endpoint.
+    2. Log in using the `/auth/login` endpoint to receive an authentication token.
+    3. Use the token in the `Authorization` header as `Bearer <your-token>` to access secure endpoints like `/products` and `/products/{id}`.
+
+    ### Important Notes:
+    - All requests should include the `Content-Type` header set to either:
+      - `application/json`
+      - `application/x-www-form-urlencoded`
+      - `multipart/form-data` (for file uploads, if applicable).
+    - Tokens expire after a specific period. Ensure proper token management on the client side.
+    - For error handling, the API returns clear error messages along with appropriate HTTP status codes.
+
+    ### Example Headers for Token Authentication:
+    ```http
+    Authorization: Bearer <your-token>
+    Content-Type: application/json
+    ```
+
+    ### Response Structure:
+    All API responses follow a consistent structure:
+    - `status`: Indicates success or failure.
+    - `statusCode`: HTTP status code.
+    - `message`: A brief description of the operation result.
+    - `data`: Contains additional information or the requested resource.
+
+    Explore the API endpoints below for more details and examples.
+  version: 1.0.1
+servers:
+  - url: http://localhost:3001/api
+    description: Connect to local server
+  - url: https://developmentserver/api
+    description: Connect to development server
+  - url: https://stagingserver/api
+    description: Connect to staging server
+
+paths:
+  /login:
+    post:
+      summary: Player Login
+      description: Allows players to log in using their credentials provided by their agents.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Login successful"
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid username or password"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Internal server error"
+  /auth/register:
+    post:
+      summary: User Registration
+      description: Endpoint to register a new user.
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      responses:
+        '201':
+          description: User successfully registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSuccessResponse'
+        '400':
+          description: Validation error or invalid data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      summary: User Login
+      description: Endpoint for user login.
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: User successfully logged in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '400':
+          description: Invalid credentials or validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /user/details:
+    get:
+      summary: Get User Profile
+      description: Fetch details of the authenticated user.
+      tags:
+        - User
+      security:
+        - BearerAuth: [] # Enables the Bearer token authentication
+      responses:
+        '200':
+          description: User details fetched successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSuccessResponse'
+        '401':
+          description: Unauthorized. Token is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /products:
+    get:
+      summary: Get a list of products with pagination and search
+      description: Retrieve a paginated list of products with optional search functionality.
+      tags:
+        - Products
+      security:
+        - BearerAuth: [] # Enables the Bearer token authentication
+      parameters:
+        - name: page
+          in: query
+          description: The page number for pagination (default is 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: The number of products per page (default is 10)
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          description: Search query to filter products by name
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A paginated list of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Products fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      products:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Product'
+                      totalPages:
+                        type: integer
+                        example: 5
+                      currentPage:
+                        type: integer
+                        example: 1
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /products/{id}:
+    get:
+      summary: Get details of a specific product
+      description: Retrieve details of a product by its ID.
+      tags:
+        - Products
+      security:
+        - BearerAuth: [] # Enables the Bearer token authentication
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the product to retrieve
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Details of the product
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Product details fetched successfully
+                  data:
+                    $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/create:
+    post:
+      summary: Create a new order
+      description: Create a new order with a list of products.
+      tags:
+        - Orders
+      security:
+        - BearerAuth: [] # Enables the Bearer token authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                products:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      productId:
+                        type: string
+                        example: 64f1b1b1b1b1b1b1b1b1b1b1
+                        description: The ID of the product to add to the order.
+                      quantity:
+                        type: integer
+                        example: 2
+                        description: The quantity of the product.
+                  minItems: 1
+                  description: List of products to include in the order.
+      responses:
+        '201':
+          description: Order created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: Order created successfully
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '400':
+          description: Validation error or invalid data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders:
+    get:
+      summary: Get all orders with pagination and filtering
+      description: Retrieve a paginated list of orders with optional status filtering and search.
+      tags:
+        - Orders
+      security:
+        - BearerAuth: [] # Enables the Bearer token authentication
+      parameters:
+        - name: page
+          in: query
+          description: The page number for pagination (default is 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: The number of orders per page (default is 10)
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          description: Filter orders by status (e.g., Pending, Shipped, Delivered)
+          required: false
+          schema:
+            type: string
+            enum: [Pending, Processing, Shipped, Delivered, Cancelled]
+        - name: search
+          in: query
+          description: Search query to filter orders by product name or order ID
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A paginated list of orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Orders fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      orders:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+                      totalPages:
+                        type: integer
+                        example: 5
+                      currentPage:
+                        type: integer
+                        example: 1
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{id}:
+    get:
+      summary: Get details of a specific order
+      description: Retrieve details of an order by its ID.
+      tags:
+        - Orders
+      security:
+        - BearerAuth: [] # Enables the Bearer token authentication
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the order to retrieve
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Details of the order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Order details fetched successfully
+                  data:
+                    $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  securitySchemes:
+    BearerAuth: # Defines Bearer token security
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    EmailPasswordFields:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+          description: User's email address.
+        password:
+          type: string
+          format: password
+          minLength: 4
+          example: 123456
+          description: Password for the user account.
+
+    RegistrationRequest:
+      allOf:
+        - $ref: '#/components/schemas/EmailPasswordFields'
+        - type: object
+          required:
+            - email
+            - password
+            - confirmPassword
+            - termsAccepted
+          properties:
+            confirmPassword:
+              type: string
+              format: password
+              example: P@ssw0rd123
+              description: Must match the password.
+            termsAccepted:
+              type: boolean
+              example: true
+              description: Indicates if the user has accepted the terms and conditions.
+
+    LoginRequest:
+      $ref: '#/components/schemas/EmailPasswordFields'
+
+    RegistrationSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        statusCode:
+          type: integer
+          example: 201
+        message:
+          type: string
+          example: User registered successfully
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              example: 64f3a2b74d58c9123456789a
+              description: Unique identifier of the registered user.
+            email:
+              type: string
+              example: user@example.com
+              description: Registered user's email address.
+
+    LoginSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: User logged in successfully
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              example: 64f3a2b74d58c9123456789a
+              description: Unique identifier of the logged-in user.
+            email:
+              type: string
+              example: user@example.com
+              description: User's email address.
+            role:
+              type: string
+              example: user
+              description: Role of the user.
+            balance:
+              type: number
+              format: float
+              example: 100.50
+              description: Current balance of the user.
+            token:
+              type: string
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+              description: JWT token for authentication.
+
+    ProfileSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: User details fetched successfully
+        data:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "12345"
+                email:
+                  type: string
+                  example: "user@example.com"
+                name:
+                  type: string
+                  example: "John Doe"
+                role:
+                  type: string
+                  example: "user"
+                balance:
+                  type: number
+                  example: 500.75
+
+    Product:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 64f1b1b1b1b1b1b1b1b1b1b1
+          description: The unique identifier of the product
+        name:
+          type: string
+          example: Laptop
+          description: The name of the product
+        price:
+          type: number
+          example: 1200
+          description: The price of the product
+        description:
+          type: string
+          example: High-performance laptop
+          description: The description of the product
+        imageUrl:
+          type: string
+          example: http://localhost:5000/images/laptop.jpg
+          description: The URL of the product image
+
+    Order:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 64f1b1b1b1b1b1b1b1b1b1b1
+          description: The unique identifier of the order
+        userId:
+          type: string
+          example: 64f3a2b74d58c9123456789a
+          description: The ID of the user who placed the order
+        products:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                example: 64f1b1b1b1b1b1b1b1b1b1b1
+                description: The ID of the product
+              quantity:
+                type: integer
+                example: 2
+                description: The quantity of the product
+          description: List of products in the order
+        totalPrice:
+          type: number
+          example: 2400
+          description: The total price of the order
+        status:
+          type: string
+          example: Pending
+          enum: [Pending, Processing, Shipped, Delivered, Cancelled]
+          description: The status of the order
+        createdAt:
+          type: string
+          format: date-time
+          example: "2023-09-01T12:00:00Z"
+          description: The date and time when the order was created
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2023-09-01T12:00:00Z"
+          description: The date and time when the order was last updated
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Validation failed or invalid credentials

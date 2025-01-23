@@ -1,0 +1,775 @@
+openapi: 3.0.0
+info:
+  title: Admin API
+  description: |
+    ## Welcome to the Admin API Documentation
+    This API provides endpoints for **admin authentication**, **product management**, **order management**, and **user management**. It supports token-based authentication using JWT.
+
+    ### Key Features:
+    - **Admin Login**: Authenticate as an admin to receive a secure token.
+    - **Product Management**: Add, update, delete, and fetch products.
+    - **Order Management**: Fetch and update orders.
+    - **User Management**: Fetch, update, and delete users.
+
+    ### How to Use:
+    1. Start by logging in as an admin using the `/admin/login` endpoint.
+    2. Use the token in the `Authorization` header as `Bearer <your-token>` to access secure endpoints.
+
+    ### Important Notes:
+    - All requests should include the `Content-Type` header set to either:
+      - `application/json`
+      - `application/x-www-form-urlencoded`
+      - `multipart/form-data` (for file uploads, if applicable).
+    - Tokens expire after a specific period. Ensure proper token management on the client side.
+    - For error handling, the API returns clear error messages along with appropriate HTTP status codes.
+
+    ### Example Headers for Token Authentication:
+    ```http
+    Authorization: Bearer <your-token>
+    Content-Type: application/json
+    ```
+
+    ### Response Structure:
+    All API responses follow a consistent structure:
+    - `status`: Indicates success or failure.
+    - `statusCode`: HTTP status code.
+    - `message`: A brief description of the operation result.
+    - `data`: Contains additional information or the requested resource.
+
+    Explore the API endpoints below for more details and examples.
+  version: 1.0
+servers:
+  - url: http://localhost:3001/admin
+    description: Connect to local server
+  - url: https://developmentserver/admin
+    description: Connect to development server
+  - url: https://stagingserver/admin
+    description: Connect to staging server
+
+paths:
+  /login:
+    post:
+      summary: Admin Login
+      description: Endpoint for admin login.
+      tags:
+        - Admin Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Admin successfully logged in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginSuccessResponse'
+        '400':
+          description: Invalid credentials or validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /products:
+    get:
+      summary: Get all products with pagination and search
+      description: Retrieve a paginated list of products with optional search functionality.
+      tags:
+        - Product Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: The page number for pagination (default is 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: The number of products per page (default is 10)
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          description: Search query to filter products by name
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A paginated list of products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Products fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      products:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Product'
+                      totalPages:
+                        type: integer
+                        example: 5
+                      currentPage:
+                        type: integer
+                        example: 1
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Add a new product
+      description: Add a new product to the database.
+      tags:
+        - Product Management
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddProductRequest'
+      responses:
+        '201':
+          description: Product added successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductSuccessResponse'
+        '400':
+          description: Validation error or invalid data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /products/{id}:
+    put:
+      summary: Update a product
+      description: Update details of a specific product by its ID.
+      tags:
+        - Product Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the product to update
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Product updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductSuccessResponse'
+        '404':
+          description: Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a product
+      description: Delete a specific product by its ID.
+      tags:
+        - Product Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the product to delete
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Product deleted successfully
+        '404':
+          description: Product not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders:
+    get:
+      summary: Get all orders with pagination and filtering
+      description: Retrieve a paginated list of orders with optional status filtering and search.
+      tags:
+        - Order Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: The page number for pagination (default is 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: The number of orders per page (default is 10)
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          description: Filter orders by status (e.g., Pending, Shipped, Delivered)
+          required: false
+          schema:
+            type: string
+            enum: [Pending, Processing, Shipped, Delivered, Cancelled]
+        - name: search
+          in: query
+          description: Search query to filter orders by product name or order ID
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A paginated list of orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Orders fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      orders:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+                      totalPages:
+                        type: integer
+                        example: 5
+                      currentPage:
+                        type: integer
+                        example: 1
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{id}:
+    get:
+      summary: Get details of a specific order
+      description: Retrieve details of an order by its ID.
+      tags:
+        - Order Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the order to retrieve
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Details of the order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSuccessResponse'
+        '404':
+          description: Order not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update order status
+      description: Update the status of a specific order by its ID.
+      tags:
+        - Order Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the order to update
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [Pending, Processing, Shipped, Delivered, Cancelled]
+                  example: Shipped
+      responses:
+        '200':
+          description: Order status updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSuccessResponse'
+        '404':
+          description: Order not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users:
+    get:
+      summary: Get all users with pagination and search
+      description: Retrieve a paginated list of users with optional search functionality.
+      tags:
+        - User Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: The page number for pagination (default is 1)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: The number of users per page (default is 10)
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          description: Search query to filter users by email or name
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A paginated list of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Users fetched successfully
+                  data:
+                    type: object
+                    properties:
+                      users:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+                      totalPages:
+                        type: integer
+                        example: 5
+                      currentPage:
+                        type: integer
+                        example: 1
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}:
+    get:
+      summary: Get details of a specific user
+      description: Retrieve details of a user by their ID.
+      tags:
+        - User Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the user to retrieve
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Details of the user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSuccessResponse'
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update user details
+      description: Update details of a specific user by their ID.
+      tags:
+        - User Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the user to update
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User details updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSuccessResponse'
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete a user
+      description: Delete a specific user by their ID.
+      tags:
+        - User Management
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the user to delete
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  statusCode:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: User deleted successfully
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@example.com
+        password:
+          type: string
+          format: password
+          example: admin123
+      required:
+        - email
+        - password
+
+    LoginSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Admin logged in successfully
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              example: 64f3a2b74d58c9123456789a
+            email:
+              type: string
+              example: admin@example.com
+            role:
+              type: string
+              example: admin
+            token:
+              type: string
+              example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: Validation failed or invalid credentials
+
+    AddProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Laptop
+        price:
+          type: number
+          example: 1200
+        description:
+          type: string
+          example: High-performance laptop
+      required:
+        - name
+        - price
+
+    UpdateProductRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Updated Laptop
+        price:
+          type: number
+          example: 1300
+        description:
+          type: string
+          example: Updated description
+
+    ProductSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Product updated successfully
+        data:
+          $ref: '#/components/schemas/Product'
+
+    Product:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 64f1b1b1b1b1b1b1b1b1b1b1
+        name:
+          type: string
+          example: Laptop
+        price:
+          type: number
+          example: 1200
+        description:
+          type: string
+          example: High-performance laptop
+        imageUrl:
+          type: string
+          example: http://localhost:5000/images/laptop.jpg
+
+    OrderSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Order details fetched successfully
+        data:
+          $ref: '#/components/schemas/Order'
+
+    Order:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 64f1b1b1b1b1b1b1b1b1b1b1
+        userId:
+          type: string
+          example: 64f3a2b74d58c9123456789a
+        products:
+          type: array
+          items:
+            type: object
+            properties:
+              productId:
+                type: string
+                example: 64f1b1b1b1b1b1b1b1b1b1b1
+              quantity:
+                type: integer
+                example: 2
+        totalPrice:
+          type: number
+          example: 2400
+        status:
+          type: string
+          example: Pending
+          enum: [Pending, Processing, Shipped, Delivered, Cancelled]
+        createdAt:
+          type: string
+          format: date-time
+          example: "2023-09-01T12:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2023-09-01T12:00:00Z"
+
+    UserSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: User details fetched successfully
+        data:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 64f3a2b74d58c9123456789a
+        email:
+          type: string
+          example: user@example.com
+        name:
+          type: string
+          example: John Doe
+        role:
+          type: string
+          example: user
+        balance:
+          type: number
+          example: 500.75
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          example: updated@example.com
+        name:
+          type: string
+          example: Updated Name
+        balance:
+          type: number
+          example: 600.75
